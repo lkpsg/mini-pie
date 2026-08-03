@@ -165,9 +165,26 @@ npm install --ignore-scripts
 npm run build
 ```
 
+## Environment variables
+
+Create a local `.env` from the tracked empty template, then fill in the OpenAI service URL and API key:
+
+```bash
+cp .env.example .env
+```
+
+```dotenv
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=sk-...
+```
+
+`.env` is ignored by Git; `.env.example` is committed with the same variable names and empty values. `loadConfig()` automatically loads the first `.env` found next to the configuration file or in the current working directory. Environment variables already supplied by the parent process take precedence over values in the file.
+
 ## Project layout
 
 ```text
+.env
+.env.example
 mini-pie.yaml
 units/
   researcher/
@@ -195,6 +212,7 @@ models:
     api: openai-responses
     provider: openai
     model: gpt-5
+    baseUrl: ${OPENAI_BASE_URL}
     apiKeyEnv: OPENAI_API_KEY
     reasoning: true
 

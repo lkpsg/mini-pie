@@ -165,9 +165,26 @@ npm install --ignore-scripts
 npm run build
 ```
 
+## 环境变量
+
+从仓库中的空值模板创建本地 `.env`，然后填写 OpenAI 服务地址和 API Key：
+
+```bash
+cp .env.example .env
+```
+
+```dotenv
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=sk-...
+```
+
+Git 会忽略 `.env`；仓库提交的 `.env.example` 使用相同变量名，并将值留空。`loadConfig()` 会自动加载配置文件同目录或当前工作目录中找到的第一个 `.env`。父进程已经提供的环境变量优先于文件中的值。
+
 ## 项目结构
 
 ```text
+.env
+.env.example
 mini-pie.yaml
 units/
   researcher/
@@ -195,6 +212,7 @@ models:
     api: openai-responses
     provider: openai
     model: gpt-5
+    baseUrl: ${OPENAI_BASE_URL}
     apiKeyEnv: OPENAI_API_KEY
     reasoning: true
 

@@ -1,5 +1,8 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseConfigText, parseUnitText } from "../src/config.ts";
+import { loadConfig, parseConfigText, parseUnitText } from "../src/config.ts";
 
 describe("configuration", () => {
 	it("parses v2 unit registrations, storage, models, and environment placeholders", () => {
@@ -98,5 +101,48 @@ edges:
 				{},
 			),
 		).toThrow('unknown node "missing"');
+	});
+
+	it("loads a .env file next to the configuration without overriding the process environment", async () => {
+		const directory = await mkdtemp(join(tmpdir(), "mini-pie-env-"));
+		const variable = "MINI_PIE_TEST_BASE_URL";
+		const existingVariable = "MINI_PIE_TEST_EXISTING";
+		const previous = process.env[variable];
+		const previousExisting = process.env[existingVariable];
+		delete process.env[variable];
+		process.env[existingVariable] = "from-process";
+		try {
+			await writeFile(
+				join(directory, ".env"),
+				`${variable}=https://gateway.example/v1\n${existingVariable}=from-file\n`,
+				"utf8",
+			);
+			await writeFile(
+				join(directory, "mini-pie.yaml"),
+				`version: 2
+models:
+  main:
+    api: openai-responses
+    model: test-model
+    baseUrl: \${${variable}}
+    headers:
+      x-source: \${${existingVariable}}
+units:
+  worker: ./worker
+`,
+				"utf8",
+			);
+
+			const loaded = await loadConfig(join(directory, "mini-pie.yaml"));
+			expect(loaded.config.models.main?.baseUrl).toBe("https://gateway.example/v1");
+			expect(loaded.config.models.main?.headers?.["x-source"]).toBe("from-process");
+			expect(process.env[variable]).toBe("https://gateway.example/v1");
+		} finally {
+			if (previous === undefined) delete process.env[variable];
+			else process.env[variable] = previous;
+			if (previousExisting === undefined) delete process.env[existingVariable];
+			else process.env[existingVariable] = previousExisting;
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 });

@@ -9,6 +9,7 @@ models:
     api: openai-responses
     model: gpt-5
     provider: openai
+    baseUrl: ${OPENAI_BASE_URL}
     apiKeyEnv: OPENAI_API_KEY
     reasoning: true
     contextWindow: 400000

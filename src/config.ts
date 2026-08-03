@@ -1,5 +1,7 @@
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { loadEnvFile } from "node:process";
 import { parse } from "yaml";
 import type {
 	CodeHookDefinition,
@@ -311,11 +313,15 @@ export function parseUnitText(
 
 export async function loadConfig(filePath: string): Promise<LoadedConfig> {
 	const absolutePath = resolve(filePath);
+	const baseDir = dirname(absolutePath);
+	const envFiles = Array.from(new Set([resolve(baseDir, ".env"), resolve(process.cwd(), ".env")]));
+	const envFile = envFiles.find((candidate) => existsSync(candidate));
+	if (envFile) loadEnvFile(envFile);
 	const text = await readFile(absolutePath, "utf8");
 	return {
 		config: parseConfigText(text),
 		filePath: absolutePath,
-		baseDir: dirname(absolutePath),
+		baseDir,
 	};
 }
 
