@@ -1,0 +1,7 @@
+kind: agent
+description: The smallest configured agent
+model: default
+systemPrompt:
+  file: ./prompts/system.md
+userPrompt: "Summarize this text:\n\n{{input}}"
+maxTurns: 4

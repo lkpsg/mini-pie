@@ -1,0 +1,38 @@
+kind: graph
+description: A linear code-agent-code graph with a persisted review point
+entry: prepare
+
+nodes:
+  prepare:
+    type: code
+    entry: ./src/nodes.ts#prepareText
+    input:
+      $ref: input
+
+  summarize:
+    type: agent
+    unit: summary-agent
+    input:
+      $ref: results.prepare.output.text
+    retry: 1
+    review:
+      after: true
+      message: Review the generated summary before packaging the result.
+
+  finish:
+    type: code
+    entry: ./src/nodes.ts#buildResult
+    input:
+      summary:
+        $ref: results.summarize.output
+      sourceCharacters:
+        $ref: state.sourceCharacters
+
+edges:
+  - from: prepare
+    to: summarize
+  - from: summarize
+    to: finish
+
+output:
+  $ref: results.finish.output

@@ -472,6 +472,16 @@ mini-pie agent researcher "Continue" --session my-session --config mini-pie.yaml
 
 使用 `--json` 输出机器可读结果。`--session new` 会生成直接 Agent Session ID。Graph State 始终具有 Run ID 和持久化 JSONL 日志。
 
+## 示例
+
+[`examples`](./examples/README.zh-CN.md) 目录通过围绕同一文本摘要任务的三个递进示例介绍框架：
+
+1. 最小配置 Agent；
+2. 带确定性前后置 Hook 的 Agent；
+3. 支持持久化恢复的 Code → Agent → 审核 → Code Graph。
+
+每个示例都刻意保持简洁，并使用仓库根目录 `.env` 中配置的同一个模型。
+
 ## 内置工具
 
 | 工具 | 用途 |
@@ -517,7 +527,7 @@ npm test
 npm run build
 ```
 
-完整的可运行配置位于 [`examples/mini-pie.yaml`](./examples/mini-pie.yaml)。
+完整的可运行指南位于 [`examples/README.zh-CN.md`](./examples/README.zh-CN.md)。
 
 ## 许可证与归属
 

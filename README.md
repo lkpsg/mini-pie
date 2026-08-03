@@ -472,6 +472,16 @@ mini-pie agent researcher "Continue" --session my-session --config mini-pie.yaml
 
 Use `--json` for machine-readable output. `--session new` generates a direct-agent session id. Graph state always has a run id and persisted JSONL log.
 
+## Examples
+
+The [`examples`](./examples/README.md) directory introduces the framework through three progressive examples built around one text-summarization task:
+
+1. a minimal configured Agent;
+2. an Agent with deterministic before and after Hooks;
+3. a Code → Agent → review → Code Graph with persisted resume.
+
+Each example is intentionally small and uses the same model configured through the root `.env`.
+
 ## Built-in tools
 
 | Tool | Purpose |
@@ -517,7 +527,7 @@ npm test
 npm run build
 ```
 
-The complete runnable configuration is in [`examples/mini-pie.yaml`](./examples/mini-pie.yaml).
+The complete runnable walkthrough is in [`examples/README.md`](./examples/README.md).
 
 ## License and attribution
 

@@ -5,25 +5,14 @@ storage:
   directory: .mini-pie/runs
 
 models:
-  main:
-    api: openai-responses
+  default:
+    api: openai-completions
     model: ${OPENAI_MODEL}
-    provider: openai
+    provider: openai-compatible
     baseUrl: ${OPENAI_BASE_URL}
     apiKeyEnv: OPENAI_API_KEY
-    reasoning: true
-    contextWindow: 400000
-    maxTokens: 32000
-
-  fast:
-    api: anthropic-messages
-    model: claude-haiku-4-5
-    provider: anthropic
-    apiKeyEnv: ANTHROPIC_API_KEY
-    contextWindow: 200000
-    maxTokens: 8192
 
 units:
-  coder: ./units/coder
-  explorer: ./units/explorer
-  inspect-and-implement: ./units/inspect-and-implement
+  summary-agent: ./units/summary-agent
+  summary-with-hooks: ./units/summary-with-hooks
+  reviewed-summary: ./units/reviewed-summary

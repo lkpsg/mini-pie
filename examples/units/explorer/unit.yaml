@@ -1,8 +1,0 @@
-kind: agent
-description: Read-only repository explorer
-model: fast
-systemPrompt:
-  file: ./prompts/system.md
-userPrompt: "Inspect this task and return concise evidence:\n\n{{input}}"
-tools: [read, grep, find, ls]
-maxTurns: 12

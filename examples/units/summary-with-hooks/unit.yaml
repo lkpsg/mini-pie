@@ -1,0 +1,14 @@
+kind: agent
+description: An agent with deterministic input and output processing
+model: default
+systemPrompt:
+  file: ./prompts/system.md
+userPrompt: "Summarize this normalized text:\n\n{{input}}"
+maxTurns: 4
+hooks:
+  before:
+    - id: normalize_input
+      entry: ./src/hooks.ts#normalizeInput
+  after:
+    - id: format_output
+      entry: ./src/hooks.ts#formatOutput
