@@ -7,7 +7,7 @@ storage:
 models:
   main:
     api: openai-responses
-    model: gpt-5
+    model: ${OPENAI_MODEL}
     provider: openai
     baseUrl: ${OPENAI_BASE_URL}
     apiKeyEnv: OPENAI_API_KEY

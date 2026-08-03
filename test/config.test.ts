@@ -106,15 +106,18 @@ edges:
 	it("loads a .env file next to the configuration without overriding the process environment", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "mini-pie-env-"));
 		const variable = "MINI_PIE_TEST_BASE_URL";
+		const modelVariable = "MINI_PIE_TEST_MODEL";
 		const existingVariable = "MINI_PIE_TEST_EXISTING";
 		const previous = process.env[variable];
+		const previousModel = process.env[modelVariable];
 		const previousExisting = process.env[existingVariable];
 		delete process.env[variable];
+		delete process.env[modelVariable];
 		process.env[existingVariable] = "from-process";
 		try {
 			await writeFile(
 				join(directory, ".env"),
-				`${variable}=https://gateway.example/v1\n${existingVariable}=from-file\n`,
+				`${variable}=https://gateway.example/v1\n${modelVariable}=test-model\n${existingVariable}=from-file\n`,
 				"utf8",
 			);
 			await writeFile(
@@ -123,7 +126,7 @@ edges:
 models:
   main:
     api: openai-responses
-    model: test-model
+    model: \${${modelVariable}}
     baseUrl: \${${variable}}
     headers:
       x-source: \${${existingVariable}}
@@ -135,11 +138,14 @@ units:
 
 			const loaded = await loadConfig(join(directory, "mini-pie.yaml"));
 			expect(loaded.config.models.main?.baseUrl).toBe("https://gateway.example/v1");
+			expect(loaded.config.models.main?.model).toBe("test-model");
 			expect(loaded.config.models.main?.headers?.["x-source"]).toBe("from-process");
 			expect(process.env[variable]).toBe("https://gateway.example/v1");
 		} finally {
 			if (previous === undefined) delete process.env[variable];
 			else process.env[variable] = previous;
+			if (previousModel === undefined) delete process.env[modelVariable];
+			else process.env[modelVariable] = previousModel;
 			if (previousExisting === undefined) delete process.env[existingVariable];
 			else process.env[existingVariable] = previousExisting;
 			await rm(directory, { recursive: true, force: true });
