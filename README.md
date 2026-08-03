@@ -1,5 +1,7 @@
 # mini-pie
 
+English | [简体中文](./README.zh-CN.md)
+
 A minimal, headless TypeScript agent and graph framework built on [Pi](https://github.com/earendil-works/pi).
 
 mini-pie is for applications where an agent is more than a prompt. A useful agent usually includes deterministic input parsing, model-driven reasoning, tools, output validation, state transitions, review points, and code that decides what happens next. mini-pie keeps those parts together as a small, inspectable software unit.
@@ -487,6 +489,8 @@ mini-pie has no OS sandbox.
 Use a container or another sandbox when running untrusted prompts, code, or repositories.
 
 ## Development
+
+Keep `README.md` and `README.zh-CN.md` synchronized whenever documentation changes.
 
 ```bash
 npm run check
