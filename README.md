@@ -2,11 +2,136 @@
 
 A minimal, headless TypeScript agent and graph framework built on [Pi](https://github.com/earendil-works/pi).
 
-mini-pie keeps Pi's streaming agent loop, state model, provider adapters, and coding tools. It adds a small configuration layer for reusable agent units and a graph runtime made from only two executable node types: `agent` and `code`.
+mini-pie is for applications where an agent is more than a prompt. A useful agent usually includes deterministic input parsing, model-driven reasoning, tools, output validation, state transitions, review points, and code that decides what happens next. mini-pie keeps those parts together as a small, inspectable software unit.
 
-There is no UI, server, database, MCP layer, expression language, or OS sandbox.
+The framework keeps Pi's streaming agent loop, state model, provider adapters, and coding tools. It adds only the configuration, code-node, graph, checkpoint, and persistence layers needed to compose those agents into applications.
 
-## Features
+## Why mini-pie
+
+A prompt-only abstraction is convenient at the beginning, but it becomes limiting when the agent needs application logic:
+
+- raw input must be parsed or enriched before it reaches the model;
+- model output must be validated, normalized, or converted into domain data;
+- deterministic code should make decisions that do not require another model call;
+- several agents may need to run in parallel and exchange structured results;
+- execution may need to pause for inspection, editing, approval, or takeover;
+- a stopped process must be able to resume without replaying completed work.
+
+mini-pie models this as a graph of deterministic `code` nodes and probabilistic `agent` nodes. A single agent, an agent with hooks, a multi-agent workflow, and a larger agent/code application all use the same execution model.
+
+This is mini-pie's interpretation of graph engineering: the graph is the source-visible architecture of the agent application, not merely a visual chain of prompts. Nodes expose where deterministic and model-driven behavior live, edges expose control flow, bindings expose data flow, and persisted state exposes what happened at runtime.
+
+## Design philosophy
+
+### 1. Keep the primitive set small
+
+The runtime has only two executable node types:
+
+| Node | Responsibility |
+| --- | --- |
+| `agent` | Semantic work through a Pi agent loop, model, prompt, and tools |
+| `code` | Deterministic parsing, validation, transformation, integration, and routing data |
+
+Hooks are not a third primitive. They compile into ordinary code nodes before or after an agent. Workflows are not a separate runtime either; they are graph units built from the same two nodes.
+
+Minimal here means a small set of composable concepts, not a restricted execution model.
+
+### 2. Treat an agent as a software unit, not a prompt file
+
+Each `units/<name>/` directory owns everything required to run that agent or graph:
+
+- its `unit.yaml` definition;
+- system and user prompts;
+- TypeScript code nodes and hooks;
+- schemas and other local resources.
+
+The top-level configuration only registers models, storage, workspace, and unit locations. This keeps a unit movable, reviewable, and versionable as one piece instead of spreading its behavior across a global configuration file.
+
+### 3. Put deterministic logic around probabilistic logic
+
+Language models are useful for interpretation, planning, and generation. They are a poor substitute for ordinary code when the operation is already known.
+
+mini-pie therefore encourages a direct split:
+
+- use code to parse inputs, enforce schemas, call application services, calculate values, and classify explicit states;
+- use agents where reasoning over ambiguous or unstructured information is required;
+- connect both with edges so the boundary is visible.
+
+This makes model calls easier to test and keeps business rules out of prompts.
+
+### 4. Use configuration for structure and TypeScript for behavior
+
+YAML describes stable topology: nodes, edges, bindings, retries, timeouts, concurrency, and review points. TypeScript implements behavior that benefits from types, libraries, tests, and normal source control.
+
+mini-pie deliberately has no embedded expression language. Structured `$ref` bindings cover data movement, while non-trivial computation stays in code nodes.
+
+### 5. Make data flow and state explicit
+
+Nodes communicate through four visible namespaces: immutable `input`, mutable `state`, node `results`, and `runtime` metadata. Edges control execution; `$ref` bindings control data movement.
+
+There is no hidden shared conversation across graph nodes. Agent nodes receive an explicit input, code nodes return an explicit output and optional `statePatch`, and the latest node result is inspectable in the run snapshot.
+
+### 6. Make interruption a normal state
+
+Human review is part of graph execution rather than a UI feature. Any node can pause before or after execution. The caller can approve, edit, retry, skip, override, take over, or abort, then resume in the same or another process.
+
+The checkpoint is persisted before control returns to the caller. This makes debugging, approval, and operational takeover use the same mechanism.
+
+### 7. Prefer local and inspectable infrastructure
+
+Configuration is YAML, unit behavior is TypeScript, sessions and graph runs are JSONL, and there is no required server or database. A run can be understood from files in the repository and its persisted event log.
+
+The defaults fit local tools, scripts, CI jobs, and application backends. A larger system can replace or wrap these boundaries without changing the node model.
+
+### 8. Build on Pi instead of rebuilding the agent loop
+
+Pi already provides the difficult model-facing foundation: streaming, tool execution, agent state, provider adapters, cancellation, and message handling. mini-pie depends on that foundation and focuses on reusable definitions and graph execution.
+
+The result is a thin framework layer rather than another model SDK or a fork of Pi.
+
+## Execution model
+
+```mermaid
+flowchart LR
+    input["Input"] --> runtime["Graph runtime"]
+    runtime --> code["code node"]
+    runtime --> agent["agent node"]
+    code --> logic["Trusted TypeScript"]
+    agent --> pi["Pi agent loop"]
+    logic --> result["Output + state patch"]
+    pi --> result
+    result --> checkpoint["Persisted snapshot"]
+    checkpoint --> complete{"Run complete?"}
+    complete -->|"yes"| output["Final output"]
+    complete -->|"no"| review{"Review configured?"}
+    review -->|"continue"| runtime
+    review -->|"pause"| human["Human or application decision"]
+    human --> runtime
+```
+
+The graph scheduler activates entry nodes, resolves their inputs, runs ready nodes up to the concurrency limit, persists results, evaluates outgoing edge conditions, and activates the next nodes. Cycles use the same process and are bounded by step and visit limits.
+
+An agent with hooks is compiled into the same model:
+
+```text
+input -> before code hooks -> Pi agent -> after code hooks -> output
+```
+
+This shared representation is the central design choice: a standalone agent can grow into a graph without moving to another API or orchestration system.
+
+## Deliberate non-goals
+
+mini-pie is not intended to be a hosted agent platform. It intentionally does not include:
+
+- a UI, HTTP server, or deployment control plane;
+- a database, queue, or distributed scheduler;
+- an MCP layer or plugin marketplace;
+- a second programming language hidden inside YAML;
+- an operating-system sandbox.
+
+Code nodes and tools execute with the permissions of the mini-pie process. Applications that run untrusted work should provide an external sandbox.
+
+## Capabilities
 
 - Define a standalone agent with a model, system prompt, user prompt, and tools.
 - Register agents and graphs from self-contained `units/<name>/` directories.
