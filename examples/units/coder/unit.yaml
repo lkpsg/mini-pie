@@ -4,7 +4,7 @@ model: main
 systemPrompt:
   file: ./prompts/system.md
 userPrompt: "Complete this task:\n\n{{input}}"
-tools: [read, write, edit, apply_patch, bash, grep, find, ls, http_request, sleep, todo]
+tools: [read, write, edit, bash, grep, find, ls, http_request, sleep, todo]
 subagents: [explorer]
 thinking: medium
 maxTurns: 32

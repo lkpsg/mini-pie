@@ -1,40 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type } from "@earendil-works/pi-ai";
-import { applyPatch } from "diff";
-import { resolveWorkspacePath } from "../workspace.ts";
-
-const applyPatchSchema = Type.Object({
-	path: Type.String({ description: "Workspace-relative path of the file to patch" }),
-	patch: Type.String({ description: "Unified diff for exactly one file" }),
-});
-
-function createApplyPatchTool(workspace: string): AgentTool<typeof applyPatchSchema, { path: string }> {
-	return {
-		name: "apply_patch",
-		label: "apply_patch",
-		description: "Apply a unified diff to one file. The patch must include standard @@ hunk headers.",
-		parameters: applyPatchSchema,
-		executionMode: "sequential",
-		async execute(_id, { path, patch }, signal) {
-			if (signal?.aborted) throw new Error("Operation aborted");
-			const target = await resolveWorkspacePath(workspace, path);
-			let original = "";
-			try {
-				original = await readFile(target, "utf8");
-			} catch (error) {
-				if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
-			}
-			const updated = applyPatch(original, patch);
-			if (updated === false) throw new Error(`Patch did not apply cleanly to ${path}`);
-			if (signal?.aborted) throw new Error("Operation aborted");
-			await mkdir(dirname(target), { recursive: true });
-			await writeFile(target, updated, "utf8");
-			return { content: [{ type: "text", text: `Applied patch to ${path}` }], details: { path } };
-		},
-	};
-}
 
 const httpRequestSchema = Type.Object({
 	url: Type.String({ description: "HTTP or HTTPS URL" }),
@@ -171,6 +136,6 @@ function createTodoTool(): AgentTool<typeof todoSchema, { items: TodoItem[] }> {
 	};
 }
 
-export function createMiscTools(workspace: string): AgentTool[] {
-	return [createApplyPatchTool(workspace), createHttpRequestTool(), createSleepTool(), createTodoTool()];
+export function createMiscTools(): AgentTool[] {
+	return [createHttpRequestTool(), createSleepTool(), createTodoTool()];
 }

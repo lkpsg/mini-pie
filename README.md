@@ -462,7 +462,6 @@ Use `--json` for machine-readable output. `--session new` generates a direct-age
 | `grep` | Search text files with a regular expression |
 | `find` | Find files by glob |
 | `ls` | List a directory |
-| `apply_patch` | Apply a unified diff to one file |
 | `http_request` | Make an HTTP request |
 | `sleep` | Wait for up to 60 seconds |
 | `todo` | Maintain an in-memory agent task list |

@@ -18,7 +18,7 @@ export function isBuiltinToolName(name: string): name is BuiltinToolName {
 export function createToolSet(names: string[], workspace: string, customTools: readonly AgentTool[] = []): ToolSet {
 	const core = createCoreTools(workspace);
 	const registry = new Map<string, AgentTool>();
-	for (const tool of [...core.tools, ...createSearchTools(workspace), ...createMiscTools(workspace), ...customTools]) {
+	for (const tool of [...core.tools, ...createSearchTools(workspace), ...createMiscTools(), ...customTools]) {
 		if (registry.has(tool.name)) throw new Error(`Duplicate tool name: ${tool.name}`);
 		registry.set(tool.name, tool);
 	}

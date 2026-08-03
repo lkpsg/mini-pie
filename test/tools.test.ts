@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
@@ -34,8 +34,8 @@ describe("built-in tools", () => {
 		await rm(workspace, { recursive: true, force: true });
 	});
 
-	it("writes, reads, searches, finds, lists, and patches files", async () => {
-		const toolSet = createToolSet(["write", "read", "grep", "find", "ls", "apply_patch"], workspace);
+	it("writes, reads, searches, finds, and lists files", async () => {
+		const toolSet = createToolSet(["write", "read", "grep", "find", "ls"], workspace);
 		try {
 			await execute(toolSet.tools, "write", { path: "note.txt", content: "hello\n" });
 			const read = await execute(toolSet.tools, "read", { path: "note.txt" });
@@ -50,12 +50,6 @@ describe("built-in tools", () => {
 			const list = await execute(toolSet.tools, "ls", { path: "." });
 			expect(list.content[0]).toMatchObject({ type: "text" });
 			expect((list.content[0] as { text: string }).text).toContain("note.txt");
-
-			await execute(toolSet.tools, "apply_patch", {
-				path: "note.txt",
-				patch: "--- a/note.txt\n+++ b/note.txt\n@@ -1 +1 @@\n-hello\n+hello world\n",
-			});
-			expect(await readFile(join(workspace, "note.txt"), "utf8")).toBe("hello world\n");
 		} finally {
 			await toolSet.dispose();
 		}

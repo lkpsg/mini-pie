@@ -13,7 +13,6 @@ export const BUILTIN_TOOL_NAMES = [
 	"grep",
 	"find",
 	"ls",
-	"apply_patch",
 	"http_request",
 	"sleep",
 	"todo",

@@ -45,7 +45,7 @@ export async function resolveWorkspacePath(workspace: string, requestedPath: str
 }
 
 export async function guardToolPath(workspace: string, toolName: string, argumentsValue: unknown): Promise<void> {
-	if (!["read", "write", "edit", "grep", "find", "ls", "apply_patch"].includes(toolName)) return;
+	if (!["read", "write", "edit", "grep", "find", "ls"].includes(toolName)) return;
 	if (typeof argumentsValue !== "object" || argumentsValue === null) return;
 	const path = (argumentsValue as Record<string, unknown>).path;
 	if (typeof path === "string") await resolveWorkspacePath(workspace, path);
