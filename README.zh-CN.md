@@ -165,6 +165,18 @@ npm install --ignore-scripts
 npm run build
 ```
 
+## 通过对话使用 Codex 开发
+
+源码仓库和 npm 包都包含 [`build-with-mini-pie`](./skills/build-with-mini-pie/SKILL.md) Skill。向 Codex 指定该 Skill，然后直接用日常语言描述 Agent 应用；它会把需求转换为最小可用的 Agent、Agent + Hook 或 Graph 实现，并完成项目编辑与验证。
+
+在克隆的仓库中可以直接这样使用：
+
+```text
+使用 skills/build-with-mini-pie/SKILL.md 这个 Skill，做一个研究工作流：并行分析技术风险和市场情况，合并结果，并在最终报告生成前暂停等待人工批准。
+```
+
+若希望通过 `$build-with-mini-pie` 作为个人 Skill 调用，可将仓库中的 `skills/build-with-mini-pie`，或已安装 npm 包中的 `node_modules/mini-pie/skills/build-with-mini-pie`，复制到 `~/.codex/skills`。描述可以是口语化或不完整的，不需要预先了解 Node、Binding、Checkpoint 等 mini-pie 概念。
+
 ## 环境变量
 
 从仓库中的空值模板创建本地 `.env`，然后填写 OpenAI 服务地址、API Key 和模型名称：

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build with mini-pie"
+  short_description: "Turn spoken ideas into mini-pie agents and graphs"
+  default_prompt: "Use $build-with-mini-pie to turn my description into a working mini-pie agent or graph."

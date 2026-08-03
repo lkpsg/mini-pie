@@ -165,6 +165,18 @@ npm install --ignore-scripts
 npm run build
 ```
 
+## Build with Codex through conversation
+
+The source repository and npm package include the [`build-with-mini-pie`](./skills/build-with-mini-pie/SKILL.md) skill. Point Codex to the skill and describe the agent application in ordinary language; it translates the request into the smallest suitable Agent, Agent + Hooks, or Graph implementation, then edits and validates the project.
+
+Use it directly from a cloned repository:
+
+```text
+Use the skill at skills/build-with-mini-pie/SKILL.md to build a research workflow that runs risk and market analysis in parallel, combines the results, and pauses for approval before finalizing the report.
+```
+
+To make `$build-with-mini-pie` available as a personal skill, copy `skills/build-with-mini-pie` from the repository—or `node_modules/mini-pie/skills/build-with-mini-pie` from an installed package—into `~/.codex/skills`. The skill accepts rough or incomplete descriptions, so you do not need to name nodes, bindings, checkpoints, or other mini-pie concepts first.
+
 ## Environment variables
 
 Create a local `.env` from the tracked empty template, then fill in the OpenAI service URL, API key, and model:
