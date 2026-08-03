@@ -1,0 +1,13 @@
+kind: graph
+entry: uppercase
+nodes:
+  uppercase:
+    type: code
+    entry: ./nodes.ts#uppercase
+    input:
+      text:
+        $ref: input
+    params:
+      prefix: mini-
+output:
+  $ref: results.uppercase.output

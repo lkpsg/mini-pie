@@ -1,7 +1,7 @@
 {
 	"name": "mini-pie",
-	"version": "0.1.0",
-	"description": "A minimal, headless agent framework built on Pi",
+	"version": "0.2.0",
+	"description": "A minimal, headless agent and graph framework built on Pi",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -30,6 +30,7 @@
 		"@earendil-works/pi-agent-core": "0.83.0",
 		"@earendil-works/pi-ai": "0.83.0",
 		"diff": "8.0.4",
+		"typebox": "1.3.7",
 		"yaml": "2.9.0"
 	},
 	"devDependencies": {

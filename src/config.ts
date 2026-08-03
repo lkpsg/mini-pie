@@ -1,13 +1,16 @@
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { parse } from "yaml";
-import {
-	type AgentWorkflowStep,
-	type MiniPieConfig,
-	type PromptSource,
-	SUPPORTED_MODEL_APIS,
-	type WorkflowStep,
+import type {
+	CodeHookDefinition,
+	GraphCondition,
+	GraphNodeDefinition,
+	MiniPieConfig,
+	NodeReviewDefinition,
+	PromptSource,
+	UnitDefinition,
 } from "./types.ts";
+import { SUPPORTED_MODEL_APIS } from "./types.ts";
 
 export interface LoadedConfig {
 	config: MiniPieConfig;
@@ -33,6 +36,16 @@ function requireString(value: unknown, path: string): string {
 	return value;
 }
 
+function validateId(value: string, path: string): void {
+	if (!/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(value)) {
+		fail(path, "expected an identifier containing letters, numbers, underscores, or hyphens");
+	}
+}
+
+function optionalString(value: unknown, path: string): void {
+	if (value !== undefined) requireString(value, path);
+}
+
 function optionalPositiveInteger(value: unknown, path: string): void {
 	if (value === undefined) return;
 	if (!Number.isInteger(value) || (value as number) <= 0) fail(path, "expected a positive integer");
@@ -56,7 +69,7 @@ function validatePromptSource(value: unknown, path: string): asserts value is Pr
 	requireString(source.file, `${path}.file`);
 }
 
-function validateModels(value: unknown): void {
+function validateModels(value: unknown): Record<string, unknown> {
 	const models = requireRecord(value, "models");
 	if (Object.keys(models).length === 0) fail("models", "at least one model is required");
 	for (const [name, value] of Object.entries(models)) {
@@ -67,9 +80,7 @@ function validateModels(value: unknown): void {
 			fail(`${path}.api`, `expected one of ${SUPPORTED_MODEL_APIS.join(", ")}`);
 		}
 		requireString(model.model, `${path}.model`);
-		for (const key of ["provider", "baseUrl", "apiKeyEnv"] as const) {
-			if (model[key] !== undefined) requireString(model[key], `${path}.${key}`);
-		}
+		for (const key of ["provider", "baseUrl", "apiKeyEnv"] as const) optionalString(model[key], `${path}.${key}`);
 		if (model.reasoning !== undefined && typeof model.reasoning !== "boolean") {
 			fail(`${path}.reasoning`, "expected a boolean");
 		}
@@ -91,6 +102,7 @@ function validateModels(value: unknown): void {
 			}
 		}
 	}
+	return models;
 }
 
 function validateCompaction(value: unknown, path: string): void {
@@ -109,37 +121,18 @@ function validateCompaction(value: unknown, path: string): void {
 	}
 }
 
-function validateAgents(value: unknown, models: Record<string, unknown>): void {
-	const agents = requireRecord(value, "agents");
-	if (Object.keys(agents).length === 0) fail("agents", "at least one agent is required");
-	for (const [name, value] of Object.entries(agents)) {
-		const path = `agents.${name}`;
-		const agent = requireRecord(value, path);
-		const model = requireString(agent.model, `${path}.model`);
-		if (!(model in models)) fail(`${path}.model`, `unknown model "${model}"`);
-		validatePromptSource(agent.systemPrompt, `${path}.systemPrompt`);
-		if (agent.userPrompt !== undefined) validatePromptSource(agent.userPrompt, `${path}.userPrompt`);
-		validateStringArray(agent.tools, `${path}.tools`);
-		validateStringArray(agent.subagents, `${path}.subagents`);
-		if (
-			agent.thinking !== undefined &&
-			!["off", "minimal", "low", "medium", "high", "xhigh", "max"].includes(String(agent.thinking))
-		) {
-			fail(`${path}.thinking`, "invalid thinking level");
-		}
-		optionalPositiveInteger(agent.maxTurns, `${path}.maxTurns`);
-		optionalPositiveInteger(agent.maxToolCalls, `${path}.maxToolCalls`);
-		validateCompaction(agent.compaction, `${path}.compaction`);
-	}
-	for (const [name, value] of Object.entries(agents)) {
-		const agent = value as Record<string, unknown>;
-		for (const subagent of (agent.subagents as string[] | undefined) ?? []) {
-			if (!(subagent in agents)) fail(`agents.${name}.subagents`, `unknown agent "${subagent}"`);
+function validateReview(value: unknown, path: string): asserts value is NodeReviewDefinition | undefined {
+	if (value === undefined) return;
+	const review = requireRecord(value, path);
+	for (const phase of ["before", "after"] as const) {
+		if (review[phase] !== undefined && typeof review[phase] !== "boolean") {
+			fail(`${path}.${phase}`, "expected a boolean");
 		}
 	}
+	optionalString(review.message, `${path}.message`);
 }
 
-function validateCondition(value: unknown, path: string): void {
+function validateCondition(value: unknown, path: string): asserts value is GraphCondition | undefined {
 	if (value === undefined) return;
 	const condition = requireRecord(value, path);
 	requireString(condition.path, `${path}.path`);
@@ -154,57 +147,110 @@ function validateCondition(value: unknown, path: string): void {
 	}
 }
 
-function validateAgentStep(
-	value: unknown,
-	path: string,
-	agents: Record<string, unknown>,
-): asserts value is AgentWorkflowStep {
-	const step = requireRecord(value, path);
-	requireString(step.id, `${path}.id`);
-	const agent = requireString(step.agent, `${path}.agent`);
-	if (!(agent in agents)) fail(`${path}.agent`, `unknown agent "${agent}"`);
-	validatePromptSource(step.prompt, `${path}.prompt`);
-	validateCondition(step.when, `${path}.when`);
-	optionalNonNegativeInteger(step.retry, `${path}.retry`);
+function validateCommonNode(node: Record<string, unknown>, path: string): void {
+	optionalNonNegativeInteger(node.retry, `${path}.retry`);
+	optionalPositiveInteger(node.timeoutMs, `${path}.timeoutMs`);
+	optionalString(node.concurrencyKey, `${path}.concurrencyKey`);
+	if (node.join !== undefined && node.join !== "all" && node.join !== "any") {
+		fail(`${path}.join`, 'expected "all" or "any"');
+	}
+	if (node.edgeMode !== undefined && node.edgeMode !== "first" && node.edgeMode !== "all") {
+		fail(`${path}.edgeMode`, 'expected "first" or "all"');
+	}
+	validateReview(node.review, `${path}.review`);
 }
 
-function validateWorkflowStep(
-	value: unknown,
-	path: string,
-	agents: Record<string, unknown>,
-): asserts value is WorkflowStep {
-	const step = requireRecord(value, path);
-	if (step.parallel !== undefined) {
-		if (!Array.isArray(step.parallel) || step.parallel.length === 0) {
-			fail(`${path}.parallel`, "expected a non-empty array");
-		}
-		for (const [index, child] of step.parallel.entries()) {
-			validateAgentStep(child, `${path}.parallel[${index}]`, agents);
-		}
+function validateNode(value: unknown, path: string): asserts value is GraphNodeDefinition {
+	const node = requireRecord(value, path);
+	validateCommonNode(node, path);
+	if (node.type === "agent") {
+		requireString(node.unit, `${path}.unit`);
 		return;
 	}
-	validateAgentStep(step, path, agents);
+	if (node.type === "code") {
+		requireString(node.entry, `${path}.entry`);
+		return;
+	}
+	fail(`${path}.type`, 'expected "agent" or "code"');
 }
 
-function validateWorkflows(value: unknown, agents: Record<string, unknown>): void {
+function validateHook(value: unknown, path: string): asserts value is CodeHookDefinition {
+	const hook = requireRecord(value, path);
+	validateId(requireString(hook.id, `${path}.id`), `${path}.id`);
+	requireString(hook.entry, `${path}.entry`);
+	optionalNonNegativeInteger(hook.retry, `${path}.retry`);
+	optionalPositiveInteger(hook.timeoutMs, `${path}.timeoutMs`);
+	validateReview(hook.review, `${path}.review`);
+}
+
+function validateHooks(value: unknown, path: string): void {
 	if (value === undefined) return;
-	const workflows = requireRecord(value, "workflows");
-	for (const [name, value] of Object.entries(workflows)) {
-		const path = `workflows.${name}`;
-		const workflow = requireRecord(value, path);
-		if (!Array.isArray(workflow.steps) || workflow.steps.length === 0) {
-			fail(`${path}.steps`, "expected a non-empty array");
+	const hooks = requireRecord(value, path);
+	const ids = new Set<string>();
+	for (const phase of ["before", "after"] as const) {
+		const entries = hooks[phase];
+		if (entries === undefined) continue;
+		if (!Array.isArray(entries)) fail(`${path}.${phase}`, "expected an array");
+		for (const [index, entry] of entries.entries()) {
+			validateHook(entry, `${path}.${phase}[${index}]`);
+			if (entry.id === "agent") fail(`${path}.${phase}[${index}].id`, '"agent" is reserved');
+			if (ids.has(entry.id)) fail(path, `duplicate hook id "${entry.id}"`);
+			ids.add(entry.id);
 		}
-		const ids = new Set<string>();
-		workflow.steps.forEach((step, index) => {
-			validateWorkflowStep(step, `${path}.steps[${index}]`, agents);
-			const children = "parallel" in step ? step.parallel : [step];
-			for (const child of children) {
-				if (ids.has(child.id)) fail(`${path}.steps`, `duplicate step id "${child.id}"`);
-				ids.add(child.id);
-			}
-		});
 	}
+}
+
+function validateAgentUnit(unit: Record<string, unknown>, path: string, models: Record<string, unknown>): void {
+	const model = requireString(unit.model, `${path}.model`);
+	if (!(model in models)) fail(`${path}.model`, `unknown model "${model}"`);
+	validatePromptSource(unit.systemPrompt, `${path}.systemPrompt`);
+	if (unit.userPrompt !== undefined) validatePromptSource(unit.userPrompt, `${path}.userPrompt`);
+	validateStringArray(unit.tools, `${path}.tools`);
+	validateStringArray(unit.subagents, `${path}.subagents`);
+	if (
+		unit.thinking !== undefined &&
+		!["off", "minimal", "low", "medium", "high", "xhigh", "max"].includes(String(unit.thinking))
+	) {
+		fail(`${path}.thinking`, "invalid thinking level");
+	}
+	optionalPositiveInteger(unit.maxTurns, `${path}.maxTurns`);
+	optionalPositiveInteger(unit.maxToolCalls, `${path}.maxToolCalls`);
+	validateCompaction(unit.compaction, `${path}.compaction`);
+	validateHooks(unit.hooks, `${path}.hooks`);
+	validateReview(unit.review, `${path}.review`);
+}
+
+function validateGraphUnit(unit: Record<string, unknown>, path: string): void {
+	const nodes = requireRecord(unit.nodes, `${path}.nodes`);
+	if (Object.keys(nodes).length === 0) fail(`${path}.nodes`, "at least one node is required");
+	for (const [id, node] of Object.entries(nodes)) {
+		validateId(id, `${path}.nodes.${id}`);
+		validateNode(node, `${path}.nodes.${id}`);
+	}
+
+	if (unit.entry !== undefined) {
+		const entries = typeof unit.entry === "string" ? [unit.entry] : unit.entry;
+		if (!Array.isArray(entries) || entries.length === 0 || entries.some((entry) => typeof entry !== "string")) {
+			fail(`${path}.entry`, "expected a node id or a non-empty array of node ids");
+		}
+		for (const entry of entries) if (!(entry in nodes)) fail(`${path}.entry`, `unknown node "${entry}"`);
+	}
+
+	if (unit.edges !== undefined) {
+		if (!Array.isArray(unit.edges)) fail(`${path}.edges`, "expected an array");
+		for (const [index, value] of unit.edges.entries()) {
+			const edgePath = `${path}.edges[${index}]`;
+			const edge = requireRecord(value, edgePath);
+			const from = requireString(edge.from, `${edgePath}.from`);
+			const to = requireString(edge.to, `${edgePath}.to`);
+			if (!(from in nodes)) fail(`${edgePath}.from`, `unknown node "${from}"`);
+			if (!(to in nodes)) fail(`${edgePath}.to`, `unknown node "${to}"`);
+			validateCondition(edge.when, `${edgePath}.when`);
+		}
+	}
+	optionalPositiveInteger(unit.maxSteps, `${path}.maxSteps`);
+	optionalPositiveInteger(unit.maxVisits, `${path}.maxVisits`);
+	optionalPositiveInteger(unit.maxConcurrency, `${path}.maxConcurrency`);
 }
 
 function expandEnvironment(value: unknown, env: NodeJS.ProcessEnv, path = "config"): unknown {
@@ -227,13 +273,40 @@ function expandEnvironment(value: unknown, env: NodeJS.ProcessEnv, path = "confi
 export function parseConfigText(text: string, env: NodeJS.ProcessEnv = process.env): MiniPieConfig {
 	const expanded = expandEnvironment(parse(text) as unknown, env);
 	const config = requireRecord(expanded, "config");
-	if (config.version !== 1) fail("version", "expected 1");
+	if (config.version !== 2) fail("version", "expected 2");
 	if (config.workspace !== undefined) requireString(config.workspace, "workspace");
 	validateModels(config.models);
-	const models = config.models as Record<string, unknown>;
-	validateAgents(config.agents, models);
-	validateWorkflows(config.workflows, config.agents as Record<string, unknown>);
+	if (config.storage !== undefined) {
+		const storage = requireRecord(config.storage, "storage");
+		optionalString(storage.directory, "storage.directory");
+	}
+	const units = requireRecord(config.units, "units");
+	if (Object.keys(units).length === 0) fail("units", "at least one unit is required");
+	for (const [name, registration] of Object.entries(units)) {
+		validateId(name, `units.${name}`);
+		if (typeof registration === "string") {
+			requireString(registration, `units.${name}`);
+		} else {
+			const record = requireRecord(registration, `units.${name}`);
+			requireString(record.path, `units.${name}.path`);
+		}
+	}
 	return config as unknown as MiniPieConfig;
+}
+
+export function parseUnitText(
+	text: string,
+	models: Record<string, unknown>,
+	env: NodeJS.ProcessEnv = process.env,
+	path = "unit",
+): UnitDefinition {
+	const expanded = expandEnvironment(parse(text) as unknown, env, path);
+	const unit = requireRecord(expanded, path);
+	optionalString(unit.description, `${path}.description`);
+	if (unit.kind === "agent") validateAgentUnit(unit, path, models);
+	else if (unit.kind === "graph") validateGraphUnit(unit, path);
+	else fail(`${path}.kind`, 'expected "agent" or "graph"');
+	return unit as unknown as UnitDefinition;
 }
 
 export async function loadConfig(filePath: string): Promise<LoadedConfig> {
