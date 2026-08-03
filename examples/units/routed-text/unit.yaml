@@ -1,0 +1,36 @@
+kind: graph
+description: A Code Node that dynamically selects one of two Agent Nodes
+entry: route
+
+nodes:
+  route:
+    type: code
+    entry: ./src/router.ts#routeRequest
+    input:
+      $ref: input
+    edgeMode: first
+
+  summarize:
+    type: agent
+    unit: summary-agent
+    input:
+      $ref: results.route.output.text
+
+  explain:
+    type: agent
+    unit: explanation-agent
+    input:
+      $ref: results.route.output.text
+
+edges:
+  - from: route
+    to: summarize
+    when:
+      path: results.route.output.route
+      equals: summary
+
+  - from: route
+    to: explain
+    when:
+      path: results.route.output.route
+      equals: explain

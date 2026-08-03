@@ -474,11 +474,12 @@ mini-pie agent researcher "Continue" --session my-session --config mini-pie.yaml
 
 ## 示例
 
-[`examples`](./examples/README.zh-CN.md) 目录通过围绕同一文本摘要任务的三个递进示例介绍框架：
+[`examples`](./examples/README.zh-CN.md) 目录通过四个递进的文本处理示例介绍框架：
 
 1. 最小配置 Agent；
 2. 带确定性前后置 Hook 的 Agent；
-3. 支持持久化恢复的 Code → Agent → 审核 → Code Graph。
+3. 支持持久化恢复的 Code → Agent → 审核 → Code Graph；
+4. 使用 Code Node 将执行动态路由到两个 Agent Node 之一。
 
 每个示例都刻意保持简洁，并使用仓库根目录 `.env` 中配置的同一个模型。
 

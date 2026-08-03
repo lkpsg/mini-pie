@@ -474,11 +474,12 @@ Use `--json` for machine-readable output. `--session new` generates a direct-age
 
 ## Examples
 
-The [`examples`](./examples/README.md) directory introduces the framework through three progressive examples built around one text-summarization task:
+The [`examples`](./examples/README.md) directory introduces the framework through four progressive text-processing examples:
 
 1. a minimal configured Agent;
 2. an Agent with deterministic before and after Hooks;
-3. a Code → Agent → review → Code Graph with persisted resume.
+3. a Code → Agent → review → Code Graph with persisted resume;
+4. a Code Node that dynamically routes execution to one of two Agent Nodes.
 
 Each example is intentionally small and uses the same model configured through the root `.env`.
 

@@ -2,7 +2,7 @@
 
 English | [简体中文](./README.zh-CN.md)
 
-These examples introduce mini-pie through one small text-summarization application. They progress from a single Agent to Agent Hooks and then to a resumable Graph.
+These examples introduce mini-pie through small text-processing applications. They progress from a single Agent to Agent Hooks, a resumable Graph, and dynamic Agent routing.
 
 ## Before you start
 
@@ -118,6 +118,42 @@ npm run dev -- resume <run-id> edit '"A human-edited summary."' \
 
 The persisted JSONL run is stored under `.mini-pie/runs/`.
 
+## 4. Dynamic Agent Routing
+
+[`units/routed-text/unit.yaml`](./units/routed-text/unit.yaml) uses a Code Node to select one of two Agent Nodes at runtime:
+
+```text
+input -> routeRequest Code Node
+             ├─ summary -> summary-agent
+             └─ explain -> explanation-agent
+```
+
+The router returns a small, schema-checked decision:
+
+```json
+{ "route": "summary", "text": "..." }
+```
+
+Conditional edges inspect `results.route.output.route`. `edgeMode: first` ensures only the first matching edge activates, so only the selected Agent is called.
+
+Run the summary branch:
+
+```bash
+npm run dev -- run routed-text \
+  "summary: mini-pie makes control flow and data flow explicit." \
+  --config examples/mini-pie.yaml --json
+```
+
+Run the explanation branch:
+
+```bash
+npm run dev -- run routed-text \
+  "explain: why deterministic code should surround probabilistic agents" \
+  --config examples/mini-pie.yaml --json
+```
+
+The Graph omits an explicit `output` binding, so the output of whichever terminal Agent ran becomes the Graph output. More complex routing logic stays in the Code Node; YAML only compares the resulting route value.
+
 ## How the files fit together
 
 ```text
@@ -125,6 +161,7 @@ examples/mini-pie.yaml                 registers the model and units
 examples/units/summary-agent/          minimal reusable Agent
 examples/units/summary-with-hooks/     Agent plus before/after code
 examples/units/reviewed-summary/       Graph composed from code and an Agent
+examples/units/routed-text/             Code-driven dynamic Agent routing
 ```
 
-The three examples use the same runtime and the same `runUnit()` API. Complexity grows by composing the two primitives, `agent` and `code`, rather than switching to another workflow abstraction.
+The four examples use the same runtime and the same `runUnit()` API. Complexity grows by composing the two primitives, `agent` and `code`, rather than switching to another workflow abstraction.

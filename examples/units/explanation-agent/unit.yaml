@@ -1,0 +1,7 @@
+kind: agent
+description: A reusable Agent selected by the dynamic routing example
+model: default
+systemPrompt:
+  file: ./prompts/system.md
+userPrompt: "Explain this topic:\n\n{{input}}"
+maxTurns: 4

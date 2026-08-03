@@ -2,7 +2,7 @@
 
 [English](./README.md) | 简体中文
 
-这些示例通过一个小型文本摘要应用介绍 mini-pie，并按照单 Agent、Agent Hook、可恢复 Graph 的顺序逐步增加能力。
+这些示例通过小型文本处理应用介绍 mini-pie，并按照单 Agent、Agent Hook、可恢复 Graph、动态 Agent 路由的顺序逐步增加能力。
 
 ## 开始之前
 
@@ -118,6 +118,42 @@ npm run dev -- resume <run-id> edit '"A human-edited summary."' \
 
 持久化 JSONL Run 存储在 `.mini-pie/runs/` 下。
 
+## 4. 动态 Agent 路由
+
+[`units/routed-text/unit.yaml`](./units/routed-text/unit.yaml) 使用一个 Code Node 在运行时选择两个 Agent Node 之一：
+
+```text
+输入 -> routeRequest Code Node
+             ├─ summary -> summary-agent
+             └─ explain -> explanation-agent
+```
+
+路由节点返回一个经过 Schema 校验的简单决策：
+
+```json
+{ "route": "summary", "text": "..." }
+```
+
+条件边读取 `results.route.output.route`。`edgeMode: first` 保证只激活第一个匹配的边，因此只会调用被选中的 Agent。
+
+运行摘要分支：
+
+```bash
+npm run dev -- run routed-text \
+  "summary: mini-pie makes control flow and data flow explicit." \
+  --config examples/mini-pie.yaml --json
+```
+
+运行解释分支：
+
+```bash
+npm run dev -- run routed-text \
+  "explain: why deterministic code should surround probabilistic agents" \
+  --config examples/mini-pie.yaml --json
+```
+
+该 Graph 没有配置显式 `output` 绑定，因此实际运行的终端 Agent 输出会直接成为 Graph 输出。复杂路由逻辑保留在 Code Node 中，YAML 只比较最终路由值。
+
 ## 文件之间的关系
 
 ```text
@@ -125,6 +161,7 @@ examples/mini-pie.yaml                 注册模型和 Unit
 examples/units/summary-agent/          最小可复用 Agent
 examples/units/summary-with-hooks/     Agent 加前后置代码
 examples/units/reviewed-summary/       由代码和 Agent 组成的 Graph
+examples/units/routed-text/             代码驱动的动态 Agent 路由
 ```
 
-三个示例使用同一个 Runtime 和同一个 `runUnit()` API。随着需求增长，只需要继续组合 `agent` 和 `code` 两种原语，而不需要切换到另一套 Workflow 抽象。
+四个示例使用同一个 Runtime 和同一个 `runUnit()` API。随着需求增长，只需要继续组合 `agent` 和 `code` 两种原语，而不需要切换到另一套 Workflow 抽象。

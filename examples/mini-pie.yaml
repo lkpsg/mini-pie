@@ -14,5 +14,7 @@ models:
 
 units:
   summary-agent: ./units/summary-agent
+  explanation-agent: ./units/explanation-agent
   summary-with-hooks: ./units/summary-with-hooks
   reviewed-summary: ./units/reviewed-summary
+  routed-text: ./units/routed-text
