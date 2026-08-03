@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+.mini-pie/
+.env
+*.log
+.DS_Store

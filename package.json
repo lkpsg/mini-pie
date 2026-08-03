@@ -1,0 +1,59 @@
+{
+	"name": "mini-pie",
+	"version": "0.1.0",
+	"description": "A minimal, headless agent framework built on Pi",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"bin": {
+		"mini-pie": "./dist/cli.js"
+	},
+	"files": [
+		"dist",
+		"README.md",
+		"LICENSE",
+		"THIRD_PARTY_NOTICES.md"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"check": "biome check . && tsc --noEmit",
+		"test": "vitest --run",
+		"dev": "tsx src/cli.ts"
+	},
+	"dependencies": {
+		"@earendil-works/pi-agent-core": "0.83.0",
+		"@earendil-works/pi-ai": "0.83.0",
+		"diff": "8.0.4",
+		"yaml": "2.9.0"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.5",
+		"@types/diff": "7.0.2",
+		"@types/node": "24.12.4",
+		"tsx": "4.22.1",
+		"typescript": "5.9.3",
+		"vitest": "4.1.9"
+	},
+	"engines": {
+		"node": ">=22.19.0"
+	},
+	"keywords": [
+		"agent",
+		"ai",
+		"llm",
+		"workflow",
+		"headless"
+	],
+	"author": "Wei Tang",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/lkpsg/mini-pie.git"
+	}
+}

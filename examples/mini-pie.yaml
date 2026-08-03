@@ -1,0 +1,77 @@
+version: 1
+workspace: ..
+
+models:
+  main:
+    api: openai-responses
+    model: gpt-5
+    provider: openai
+    apiKeyEnv: OPENAI_API_KEY
+    reasoning: true
+    contextWindow: 400000
+    maxTokens: 32000
+
+  fast:
+    api: anthropic-messages
+    model: claude-haiku-4-5
+    provider: anthropic
+    apiKeyEnv: ANTHROPIC_API_KEY
+    contextWindow: 200000
+    maxTokens: 8192
+
+agents:
+  coder:
+    model: main
+    systemPrompt:
+      file: ./prompts/coder.md
+    userPrompt: "Complete this task:\n\n{{input}}"
+    tools: [read, write, edit, apply_patch, bash, grep, find, ls, http_request, sleep, todo]
+    subagents: [explorer]
+    thinking: medium
+    maxTurns: 32
+    maxToolCalls: 64
+    compaction:
+      enabled: true
+      keepRecentTokens: 16000
+      reserveTokens: 8192
+
+  explorer:
+    model: fast
+    systemPrompt:
+      file: ./prompts/explorer.md
+    tools: [read, grep, find, ls]
+    maxTurns: 12
+
+workflows:
+  inspect-and-implement:
+    steps:
+      - id: inspect
+        agent: explorer
+        prompt: "Inspect the repository for this task and report relevant files and constraints:\n\n{{input}}"
+        retry: 1
+      - parallel:
+          - id: risks
+            agent: explorer
+            prompt: "Identify implementation risks from this analysis:\n\n{{steps.inspect.output}}"
+          - id: tests
+            agent: explorer
+            prompt: "Propose focused tests from this analysis:\n\n{{steps.inspect.output}}"
+      - id: implement
+        agent: coder
+        when:
+          path: steps.inspect.output
+          notEquals: ""
+        prompt: |
+          Implement the original task.
+
+          Original task:
+          {{input}}
+
+          Repository analysis:
+          {{steps.inspect.output}}
+
+          Risks:
+          {{steps.risks.output}}
+
+          Tests:
+          {{steps.tests.output}}
