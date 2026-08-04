@@ -234,7 +234,7 @@ units:
   report-graph: ./units/report-graph
 ```
 
-顶层 YAML 和 Unit YAML 都会展开 `${ENVIRONMENT_VARIABLE}` 占位符。使用相同 Provider ID 的模型也会共享其 API Key 环境变量。
+顶层 YAML 和 Unit YAML 都会展开 `${ENVIRONMENT_VARIABLE}` 占位符。`provider` 会把多个模型别名归入同一个 Pi Provider。同一组别名必须使用相同的 `apiKeyEnv`；Provider Endpoint 取自第一个别名，因此组内应保持 `baseUrl` 一致。省略配置时，OpenAI API 默认使用 `https://api.openai.com/v1` 和 `OPENAI_API_KEY`，Anthropic Messages 默认使用 `https://api.anthropic.com` 和 `ANTHROPIC_API_KEY`。
 
 ## Agent Unit
 
@@ -253,6 +253,8 @@ maxToolCalls: 48
 ```
 
 配置 `subagents` 列表后，父 Agent 会获得 `delegate` 工具。Subagent 共享工作区，但不共享会话历史，同时禁止嵌套委派。
+
+`{{input}}` 的值在执行时由 `runUnit()`、`MiniPieAgent.run()` / `stream()` 或 Unit 名称之后的 CLI 参数传入。所有同名占位符都会被替换；如果 User Prompt 模板中没有 `{{input}}`，mini-pie 会在两个换行后追加输入。Graph 的非字符串输入在传给 Agent 前会先进行 JSON 序列化。
 
 ## Agent Hook
 
@@ -299,7 +301,7 @@ export const parseInput = defineCodeNode({
 });
 ```
 
-输入、参数和输出都会使用 TypeBox Schema 校验。Code Node 必须返回 `{ output, statePatch? }`。节点成功且所有 `after` 审核通过后，`statePatch` 会被合并到 Graph State。
+输入、参数和输出都会使用 TypeBox Schema 校验。Code Node 必须返回 `{ output, statePatch? }`。节点成功且结果被已配置的 `after` 审核接受后，`statePatch` 会被合并到 Graph State。
 
 Code 模块属于可信应用代码，mini-pie 不对它们进行沙箱隔离。
 
@@ -352,7 +354,7 @@ output:
   $ref: results.decide.output
 ```
 
-Agent Node 引用一个 Agent Unit，并执行其 Pi Agent 定义。Code Node 执行注册的 TypeScript 入口。当 Agent Unit 作为入口 Unit 运行时，它的 Hook 会生效；在更大的 Graph 中组合 Agent Node 时，应显式地在该节点周围添加 Code Node。
+Agent Node 引用一个 Agent Unit，并执行其 Pi Agent 定义。Code Node 执行注册的 TypeScript 入口。被引用 Agent Unit 自身的 Hook 和 Unit 级审核不会在 Graph Node 内执行；只有将该 Agent Unit 本身传给 `runUnit()` 时，这些能力才会生效。更大的 Graph 必须在 Agent Node 周围显式配置 Code Node 和 `review`。
 
 ### 数据模型
 
@@ -402,15 +404,17 @@ if (paused.status === "waiting_review") {
 
 审核动作：
 
-| 动作 | 行为 |
-| --- | --- |
-| `approve` | 继续执行或接受暂存输出 |
-| `retry` | 重新执行节点 |
-| `edit` | 在执行前替换输入，或在执行后替换输出 |
-| `skip` | 将节点标记为已跳过，并使用可选值完成节点 |
-| `override` | 不执行节点，直接使用提供的值完成节点 |
-| `takeover` | 记录人工产生的值并完成节点 |
-| `abort` | 终止 Graph Run |
+| 动作 | `before` 审核 | `after` 审核 |
+| --- | --- | --- |
+| `approve` | 使用当前输入执行 | 接受暂存结果 |
+| `retry` | 使用当前输入执行；此时尚未发生执行尝试 | 丢弃暂存结果，并调度一次新的节点访问 |
+| `edit` | 替换输入后执行 | 替换暂存输出后完成 |
+| `skip` | 不执行；使用给定值或 `null` 标记为已跳过 | 丢弃暂存结果；使用给定值或 `null` 标记为已跳过 |
+| `override` | 不执行；使用给定值成功完成 | 替换暂存输出后成功完成 |
+| `takeover` | 不执行，记录人工产生的值 | 使用人工产生的值替换暂存输出 |
+| `abort` | 终止 Graph Run | 终止 Graph Run |
+
+审核决策还可以携带 `statePatch`，并将其合并到 Graph State。`ReviewDecision` 目前也接受 `note`，但调度器既不会解释也不会持久化它。
 
 应用可以提供 `ReviewHandler` 立即处理审核请求：
 
@@ -468,7 +472,7 @@ try {
 }
 ```
 
-`MiniPieAgent.stream()` 会发出文本和工具生命周期事件。`MiniPieRuntime.createAgent()` 为已配置的 Agent Unit 提供相同的直接 Agent API；Graph Hook 则由 `runUnit()` 负责处理。
+`MiniPieAgent.stream()` 会发出文本和工具生命周期事件。`MiniPieRuntime.createAgent()` 为已配置的 Agent Unit 提供相同的直接 Agent API。该 API 会执行 Prompt、工具、Subagent、上下文压缩和可选 Session，但不会执行 Unit 的 Hook 或 Unit 级审核；需要这些由 Graph 支撑的能力时应使用 `runUnit()`。
 
 ## CLI
 
@@ -483,6 +487,8 @@ mini-pie agent researcher "Continue" --session my-session --config mini-pie.yaml
 ```
 
 使用 `--json` 输出机器可读结果。`--session new` 会生成直接 Agent Session ID。Graph State 始终具有 Run ID 和持久化 JSONL 日志。
+
+`agent` 命令使用直接 Agent API，因此不会执行 Agent Hook 或 Unit 级审核。要以 Graph 方式执行 Agent Unit，请使用 `run`。
 
 ## 示例
 
@@ -499,14 +505,14 @@ mini-pie agent researcher "Continue" --session my-session --config mini-pie.yaml
 
 | 工具 | 用途 |
 | --- | --- |
-| `read` | 读取文本和支持的图片，并对结果进行截断 |
+| `read` | 读取经过截断的文本，或附加受支持的 JPEG、PNG、GIF 和 WebP 图片 |
 | `write` | 创建或覆盖文件 |
 | `edit` | 执行精确文本替换 |
 | `bash` | 执行 Shell 命令 |
 | `grep` | 使用正则表达式搜索文本文件 |
 | `find` | 使用 Glob 查找文件 |
 | `ls` | 列出目录 |
-| `http_request` | 发起 HTTP 请求 |
+| `http_request` | 发起 GET、POST、PUT、PATCH 或 DELETE 请求，最多返回前 100,000 个正文字符 |
 | `sleep` | 等待最多 60 秒 |
 | `todo` | 维护 Agent 实例内存中的任务列表 |
 
@@ -514,7 +520,7 @@ mini-pie agent researcher "Continue" --session my-session --config mini-pie.yaml
 
 ## 状态与持久化
 
-Graph JSONL 文件由生命周期事件和完整快照组成。节点状态包括 `pending`、`running`、`waiting_review`、`succeeded`、`failed`、`skipped` 和 `cancelled`。Run 状态包括 `running`、`waiting_review`、`succeeded`、`failed` 和 `aborted`。
+Graph JSONL 文件中的每个生命周期事件行后面都会跟随一个完整快照行。节点状态包括 `pending`、`running`、`waiting_review`、`succeeded`、`failed`、`skipped` 和 `cancelled`。Run 状态包括 `running`、`waiting_review`、`succeeded`、`failed` 和 `aborted`。
 
 Agent 状态由 `@earendil-works/pi-agent-core` 管理。上下文压缩会先替换旧 Tool Result 的正文，再由当前模型总结较早的消息。完整消息仍然保留在 Agent State 和直接 Agent Session JSONL 中；压缩只改变发送给模型的上下文。
 

@@ -78,6 +78,8 @@ npm run dev -- run summary-with-hooks \
 
 This example shows the boundary mini-pie encourages: the model performs semantic summarization, while code handles predictable input and output processing.
 
+The direct `agent` command intentionally bypasses Hooks and Unit-level review. Use `run` whenever an Agent Unit depends on those Graph-backed behaviors.
+
 ## 3. Graph with Human Review
 
 [`units/reviewed-summary/unit.yaml`](./units/reviewed-summary/unit.yaml) expands the same task into a linear Graph:

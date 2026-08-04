@@ -65,6 +65,8 @@ hooks:
 
 Each hook may set `input`, `params`, `retry`, `timeoutMs`, and `review`. Hook IDs must be unique; `agent` is reserved.
 
+Hooks and Unit-level `review` execute when the Agent Unit is passed to `runUnit()`. A Graph Node that references the Agent Unit does not inherit either behavior; configure explicit Code Nodes and `review` on that Graph Node instead. The direct `createAgent()` API and `agent` CLI command also bypass both behaviors.
+
 ## Code node
 
 ```ts
@@ -179,7 +181,7 @@ if (result.status === "waiting_review") {
 }
 ```
 
-`runWorkflow()` aliases `runUnit()`. Review actions are `approve`, `retry`, `edit`, `skip`, `override`, `takeover`, and `abort`.
+`runWorkflow()` aliases `runUnit()`. Review actions are `approve`, `retry`, `edit`, `skip`, `override`, `takeover`, and `abort`. Their exact behavior depends on whether the checkpoint is before or after execution; use the root README's phase table when implementing review controls.
 
 ## CLI
 

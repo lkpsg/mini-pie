@@ -71,7 +71,7 @@ Prefer a self-contained `units/<name>/` directory. Keep its `unit.yaml`, prompts
 4. Honor `signal.aborted` before expensive or side-effecting work.
 5. Use erasable TypeScript compatible with Node.js strip-only execution.
 6. Keep non-trivial computation in TypeScript. Do not invent expressions inside YAML.
-7. Use hooks only for behavior owned by one standalone agent. In a larger graph, add explicit code nodes around the referenced agent node because an agent unit's hooks do not run when it is embedded as a graph node.
+7. Use hooks only for behavior owned by one standalone agent. In a larger graph, add explicit code nodes and review settings around the referenced Agent Node because the referenced Agent Unit's hooks and Unit-level review do not run when it is embedded as a Graph Node.
 
 ## Implement graphs
 

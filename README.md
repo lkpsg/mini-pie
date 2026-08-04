@@ -234,7 +234,7 @@ units:
   report-graph: ./units/report-graph
 ```
 
-`${ENVIRONMENT_VARIABLE}` placeholders are expanded in top-level and unit YAML files. Models sharing a provider id also share its API-key environment variable.
+`${ENVIRONMENT_VARIABLE}` placeholders are expanded in top-level and unit YAML files. `provider` groups model aliases into one Pi provider. Aliases in a group must use the same `apiKeyEnv`; the provider endpoint is taken from the first alias, so keep `baseUrl` consistent within the group. When omitted, OpenAI APIs default to `https://api.openai.com/v1` and `OPENAI_API_KEY`, while Anthropic Messages defaults to `https://api.anthropic.com` and `ANTHROPIC_API_KEY`.
 
 ## Agent units
 
@@ -253,6 +253,8 @@ maxToolCalls: 48
 ```
 
 A configured `subagents` list gives the parent a `delegate` tool. Subagents share the workspace but not conversation history, and nested delegation is disabled.
+
+The value for `{{input}}` is supplied at execution time by `runUnit()`, `MiniPieAgent.run()` / `stream()`, or the CLI arguments after the unit name. Every occurrence is replaced. If the user-prompt template has no `{{input}}`, mini-pie appends the input after two newlines. Non-string Graph inputs are JSON-serialized before they are passed to an Agent.
 
 ## Agent hooks
 
@@ -299,7 +301,7 @@ export const parseInput = defineCodeNode({
 });
 ```
 
-Inputs, params, and outputs are checked against their TypeBox schemas. A code node must return `{ output, statePatch? }`. `statePatch` is merged into graph state after the node succeeds and any `after` review is approved.
+Inputs, params, and outputs are checked against their TypeBox schemas. A code node must return `{ output, statePatch? }`. `statePatch` is merged into graph state after the node succeeds and its result is accepted by any configured `after` review.
 
 Code modules are trusted application code. mini-pie does not sandbox them.
 
@@ -352,7 +354,7 @@ output:
   $ref: results.decide.output
 ```
 
-An agent node references an agent unit and executes its Pi agent definition. A code node executes a registered TypeScript entry. An agent unit's hooks apply when that agent unit is run as an entry unit; graph authors place explicit code nodes around agent nodes when composing a larger graph.
+An Agent Node references an Agent Unit and executes its Pi agent definition. A Code Node executes a registered TypeScript entry. Hooks and Unit-level review on the referenced Agent Unit do not run inside a Graph Node. They apply only when that Agent Unit is itself passed to `runUnit()`. A larger Graph must put explicit Code Nodes and `review` configuration around its Agent Node.
 
 ### Data model
 
@@ -402,15 +404,17 @@ if (paused.status === "waiting_review") {
 
 Review actions:
 
-| Action | Behavior |
-| --- | --- |
-| `approve` | Continue or accept the staged output |
-| `retry` | Execute the node again |
-| `edit` | Replace the input before execution or output after execution |
-| `skip` | Complete the node as skipped with an optional value |
-| `override` | Complete the node without execution using the supplied value |
-| `takeover` | Record a human-produced value and complete the node |
-| `abort` | Abort the graph run |
+| Action | At a `before` review | At an `after` review |
+| --- | --- | --- |
+| `approve` | Execute with the current input | Accept the staged result |
+| `retry` | Execute with the current input; no attempt has run yet | Discard the staged result and schedule a new node visit |
+| `edit` | Replace the input, then execute | Replace the staged output, then complete |
+| `skip` | Do not execute; complete as skipped with the value or `null` | Discard the staged result; complete as skipped with the value or `null` |
+| `override` | Do not execute; complete successfully with the supplied value | Replace the staged output, then complete successfully |
+| `takeover` | Record a human-produced value without executing | Replace the staged output with a human-produced value |
+| `abort` | Abort the Graph Run | Abort the Graph Run |
+
+A decision may also include `statePatch`, which is merged into Graph State. `ReviewDecision` currently accepts `note`, but the scheduler neither interprets nor persists it.
 
 Applications can provide a `ReviewHandler` to answer review requests immediately:
 
@@ -468,7 +472,7 @@ try {
 }
 ```
 
-`MiniPieAgent.stream()` emits text and tool lifecycle events. `MiniPieRuntime.createAgent()` exposes the same direct-agent API for a configured agent unit; graph hooks are intentionally handled by `runUnit()`.
+`MiniPieAgent.stream()` emits text and tool lifecycle events. `MiniPieRuntime.createAgent()` exposes the same direct-agent API for a configured Agent Unit. This direct API executes prompts, tools, subagents, compaction, and optional sessions, but not the Unit's Hooks or Unit-level review; use `runUnit()` when those Graph-backed behaviors are required.
 
 ## CLI
 
@@ -483,6 +487,8 @@ mini-pie agent researcher "Continue" --session my-session --config mini-pie.yaml
 ```
 
 Use `--json` for machine-readable output. `--session new` generates a direct-agent session id. Graph state always has a run id and persisted JSONL log.
+
+The `agent` command uses the direct-agent API, so it does not run Agent Hooks or Unit-level review. Use `run` for the Graph-backed execution of an Agent Unit.
 
 ## Examples
 
@@ -499,14 +505,14 @@ Each example is intentionally small and uses the same model configured through t
 
 | Tool | Purpose |
 | --- | --- |
-| `read` | Read text and supported images with truncation |
+| `read` | Read truncated text or attach supported JPEG, PNG, GIF, and WebP images |
 | `write` | Create or overwrite a file |
 | `edit` | Apply exact text replacements |
 | `bash` | Execute a shell command |
 | `grep` | Search text files with a regular expression |
 | `find` | Find files by glob |
 | `ls` | List a directory |
-| `http_request` | Make an HTTP request |
+| `http_request` | Make a GET, POST, PUT, PATCH, or DELETE request; return at most 100,000 body characters |
 | `sleep` | Wait for up to 60 seconds |
 | `todo` | Maintain an in-memory agent task list |
 
@@ -514,7 +520,7 @@ Tools are opt-in per agent. Custom tools remain available through `defineTool()`
 
 ## State and persistence
 
-Graph JSONL files contain lifecycle events followed by full snapshots. Node statuses are `pending`, `running`, `waiting_review`, `succeeded`, `failed`, `skipped`, or `cancelled`. Run statuses are `running`, `waiting_review`, `succeeded`, `failed`, or `aborted`.
+In a Graph JSONL file, every lifecycle-event line is followed by a full snapshot line. Node statuses are `pending`, `running`, `waiting_review`, `succeeded`, `failed`, `skipped`, or `cancelled`. Run statuses are `running`, `waiting_review`, `succeeded`, `failed`, or `aborted`.
 
 Agent state is managed by `@earendil-works/pi-agent-core`. Context compaction first replaces old tool-result bodies, then asks the active model to summarize older turns. Full messages remain in agent state and direct-agent session JSONL; compaction only changes context sent to the model.
 

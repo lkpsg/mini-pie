@@ -21,7 +21,7 @@ function createHttpRequestTool(): AgentTool<typeof httpRequestSchema, { status: 
 	return {
 		name: "http_request",
 		label: "http_request",
-		description: "Make an HTTP request. Response bodies are truncated to 100 KB.",
+		description: "Make an HTTP request. Returned response bodies are limited to the first 100,000 characters.",
 		parameters: httpRequestSchema,
 		async execute(_id, { url, method = "GET", headers, body, timeoutMs = 30_000 }, signal) {
 			const parsed = new URL(url);

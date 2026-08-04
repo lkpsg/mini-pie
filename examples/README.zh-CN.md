@@ -78,6 +78,8 @@ npm run dev -- run summary-with-hooks \
 
 这个示例展示了 mini-pie 鼓励的职责边界：模型负责语义摘要，代码负责可预测的输入和输出处理。
 
+直接 `agent` 命令会有意跳过 Hook 和 Unit 级审核。当 Agent Unit 依赖这些由 Graph 支撑的能力时，应使用 `run`。
+
 ## 3. 带人工审核的 Graph
 
 [`units/reviewed-summary/unit.yaml`](./units/reviewed-summary/unit.yaml) 将相同任务扩展成一个线性 Graph：
