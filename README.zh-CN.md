@@ -165,17 +165,19 @@ npm install --ignore-scripts
 npm run build
 ```
 
-## 通过对话使用 Codex 开发
+## 通过对话构建
 
-源码仓库和 npm 包都包含 [`build-with-mini-pie`](./skills/build-with-mini-pie/SKILL.md) Skill。向 Codex 指定该 Skill，然后直接用日常语言描述 Agent 应用；它会把需求转换为最小可用的 Agent、Agent + Hook 或 Graph 实现，并完成项目编辑与验证。
+mini-pie 应用可以直接根据自然语言描述进行创建和扩展。源码仓库和 npm 包都包含可复用的 [`build-with-mini-pie`](./skills/build-with-mini-pie/SKILL.md) 构建说明，能够将所需行为转换为最小可用的 Agent、Agent + Hook 或 Graph 实现。
 
-在克隆的仓库中可以直接这样使用：
+将该说明文件加入项目上下文，然后描述预期输入、输出、处理步骤、分支、审核点和外部集成。执行时会先检查现有项目，再统一创建或更新所需配置、Prompt 和 TypeScript 代码，并验证最终实现。
+
+例如：
 
 ```text
-使用 skills/build-with-mini-pie/SKILL.md 这个 Skill，做一个研究工作流：并行分析技术风险和市场情况，合并结果，并在最终报告生成前暂停等待人工批准。
+构建一个研究工作流：并行分析技术风险和市场情况，合并结果，并在最终报告生成前暂停等待人工批准。使用 skills/build-with-mini-pie/SKILL.md 中的构建说明，并验证最终实现。
 ```
 
-若希望通过 `$build-with-mini-pie` 作为个人 Skill 调用，可将仓库中的 `skills/build-with-mini-pie`，或已安装 npm 包中的 `node_modules/mini-pie/skills/build-with-mini-pie`，复制到 `~/.codex/skills`。描述可以是口语化或不完整的，不需要预先了解 Node、Binding、Checkpoint 等 mini-pie 概念。
+需求描述可以口语化或不完整，也不需要使用 Node、Binding、Checkpoint 等 mini-pie 术语。构建说明会还原所需控制流、选择合适的基础原语、将确定性逻辑保留在代码中，并检查生成后的项目。
 
 ## 环境变量
 
