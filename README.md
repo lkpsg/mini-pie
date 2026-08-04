@@ -181,16 +181,16 @@ The description may be rough or incomplete. It does not need to use mini-pie ter
 
 ## Environment variables
 
-Create a local `.env` from the tracked empty template, then fill in the OpenAI service URL, API key, and model:
+Create a local `.env` from the tracked empty template, then fill in the model service URL, API key, and model identifier:
 
 ```bash
 cp .env.example .env
 ```
 
 ```dotenv
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-5
+OPENAI_BASE_URL=https://your-service.example/v1
+OPENAI_API_KEY=your-api-key
+OPENAI_MODEL=your-model-name
 ```
 
 `.env` is ignored by Git; `.env.example` is committed with the same variable names and empty values. `loadConfig()` automatically loads the first `.env` found next to the configuration file or in the current working directory. Environment variables already supplied by the parent process take precedence over values in the file.
@@ -236,7 +236,7 @@ units:
   report-graph: ./units/report-graph
 ```
 
-`${ENVIRONMENT_VARIABLE}` placeholders are expanded in top-level and unit YAML files. `provider` groups model aliases into one Pi provider. Aliases in a group must use the same `apiKeyEnv`; the provider endpoint is taken from the first alias, so keep `baseUrl` consistent within the group. When omitted, OpenAI APIs default to `https://api.openai.com/v1` and `OPENAI_API_KEY`, while Anthropic Messages defaults to `https://api.anthropic.com` and `ANTHROPIC_API_KEY`.
+`${ENVIRONMENT_VARIABLE}` placeholders are expanded in top-level and unit YAML files. `provider` groups model aliases into one Pi provider. Aliases in a group must use the same `apiKeyEnv`; the provider endpoint is taken from the first alias, so keep `baseUrl` consistent within the group. When omitted, `baseUrl` and `apiKeyEnv` use API-specific defaults; set them explicitly when connecting to a custom service.
 
 ## Agent units
 
@@ -457,7 +457,8 @@ const agent = await defineAgent({
   model: {
     api: "openai-responses",
     provider: "openai",
-    model: "gpt-5",
+    model: "your-model-name",
+    baseUrl: "https://your-service.example/v1",
     apiKeyEnv: "OPENAI_API_KEY",
   },
   systemPrompt: "You are a precise coding agent.",
